@@ -8,3 +8,4 @@ Spoke with professor and he said it was worth potentially looking into the route
 Useful links
 -Qorvo dev board in stock: https://www.mouser.com/ProductDetail/Qorvo/DWM1001-DEV?qs=TiOZkKH1s2T4sar5INj0ew%3D%3D
 -UWB and Apple iphones: https://developer.apple.com/nearby-interaction/
+-Apple Compilant UWB Devices: https://www.qorvo.com/innovation/ultra-wideband/products/uwb-solutions-compatible-with-apple-u1
