@@ -6,7 +6,6 @@ All other weekly research and development and code forks in progress are put int
 
 
 # To Do
-
 - Soldering for UWB chip/Dev Board 
     Dev Board = ESP32 UWB DW3000(Ultra Wideband), WROVER core)
     Dev Specs: https://www.makerfabs.com/esp32-uwb-dw3000.html
