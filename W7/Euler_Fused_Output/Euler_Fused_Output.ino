@@ -8,7 +8,7 @@ Adafruit_BNO055 bno = Adafruit_BNO055(55);
 void setup(void) 
 {
   Serial.begin(9600);
-  Serial.println("Orientation Sensor Test"); Serial.println("");
+  Serial.println("Orientation Sensor Test"); 
   
   /* Initialise the sensor */
   if(!bno.begin())
@@ -26,11 +26,10 @@ void loop(){
   imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
 
   /* Display the floating point data */
-  Serial.print("X: ");
+  Serial.print("");
   Serial.print(euler.x());
-  Serial.print(" Y: ");
+  Serial.print(", ");
   Serial.print(euler.y());
-  Serial.print(" Z: ");
-  Serial.print(euler.z());
-  Serial.println("");
+  Serial.print(", ");
+  Serial.println(euler.z());
 }

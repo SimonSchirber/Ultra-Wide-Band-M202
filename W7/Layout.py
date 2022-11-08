@@ -1,20 +1,26 @@
 import pygame
 import math
 import os
+import serial
+import time
+import numpy as np
 
-
+######Streaming Data Method####
+using_serial = True
+ser = 0
+using_BLE = False
 
 ######Calibration/Room Setup########
 #Room wall length dimension (X, Y) in meters
 wall_len = [20, 15]
 #Anchors: Known Cordinates (x,y, z) in room (m) where 0,0,0 is top left corner in diplay
-Anchor1 = [5.29, 11.54, 29.52]
-Anchor2 = [14.32, 3.56, 5.93]
+Anchor1 = [5.29, 11.54, 1.00]
+Anchor2 = [14.32, 3.56, 1.00]
 anchor_pos_list = [Anchor1, Anchor2]
 anchor_name_list = ["Anchor1", "Anchor2"]
 #Smart Device objects
-object1 = [3.01, 7.56, 8.31]
-object2 = [4.39, 7.82, 2.78]
+object1 = [3.01, 7.56, 1.00]
+object2 = [4.39, 7.82, 1.00]
 obj_pos_list = [object1, object2]
 obj_name_list = ["Smart Light", "Smart TV"]
 comb_pos_list = [Anchor1, Anchor2, object1, object2]
@@ -25,6 +31,8 @@ north_angle = 3*math.pi/4
 ###########Sensor Data Readings#############
 #Magnetometer Angle
 mag_angle = 0
+###Gyroscope Angle####
+gyro_angle = 0
 #Gyroscope Readings (Gx, Gy, Gz)
 G = [10, 5.26, -1.3]
 #Accelerometer Readings(Ax, Ay, Az)
@@ -32,9 +40,11 @@ A = [32.5, 72.97, 32.56]
 #Anchor Relatives Distances from tag (one dist reading/anchor)
 anchor_dist_list = [5.45, 10.3]
 
+
 #####Predictions#####
 #User Predicted Position (Tag Position, x, y, z)
 predicted_pos = [0, 0, 0]
+orientation = [0, 0, 0]
 predicted_device = "Smart Light"
 
 ######Pygame Display Settings####
@@ -80,13 +90,41 @@ bulb_img = pygame.transform.rotozoom(bulb_img, 0., .12)
 tv_img = pygame.image.load(images_dir + "\\tv.png").convert_alpha()
 tv_img = pygame.transform.rotozoom(tv_img, 0., .05)
 user_tag_img = pygame.image.load(images_dir + "\\user.png").convert_alpha()
-user_tag_img = pygame.transform.rotozoom(user_tag_img, 0., .05)
+user_tag_img = pygame.transform.rotozoom(user_tag_img, 0., .1)
 
+def connect_serial():
+    global ser
+    
+    for i in range(20):
+        try:
+            ser = serial.Serial(F'COM{i}', 9600, timeout=1)
+            if (ser.isOpen()):
+                print(f"Using Com{i}")
+            break
+        except:
+            print(f"Not Com{i}")
+        if (i == 19):
+            print("no Com found")
+            exit()
+            break
+
+def read_serial():
+    global orientation, need_render, mag_angle, gyro_angle
+    try:
+        arduinoData = ser.readline().decode('ascii')
+        orientation = [float(orient) for orient in arduinoData.split(", ")]
+        mag_angle = orientation[0]
+        gyro_angle = orientation[1]
+        
+        print(arduinoData)
+        need_render = True
+    except:
+        print("No Byte")
 
 def calibrate_pos(object_number):
     global predicted_pos
     global comb_pos_list
-
+    input_avaialable = False
     if (object_number == len(comb_pos_list)+ 1):
         try:
             x = float(input("X position(m) of User: "))
@@ -101,7 +139,7 @@ def calibrate_pos(object_number):
         except:
             print("Not a valid input")
     else:
-        object_number -= 1
+        object_number -= 1    
         try:
             comb_pos_list[object_number][0] = float(input(f"X position(m) of {comb_name_list[object_number]}: "))
             comb_pos_list[object_number][1] = float(input(f"Y position(m) of Object {comb_name_list[object_number]}: "))
@@ -113,25 +151,23 @@ def draw_mag_line(line_angle, color, radius):
     """Draw the lines that move the magnetometer/compass"""
     xcenter_mag = (width_column1 + column3_xcord)/2
     ycenter_mag =  length_display*.5
-    xouter_mag = xcenter_mag + radius * math.cos(line_angle)
-    youter_mag = ycenter_mag + radius * math.sin(line_angle)
+    xouter_mag = xcenter_mag + radius * math.cos(line_angle * np.pi/180)
+    youter_mag = ycenter_mag + radius * math.sin(line_angle * np.pi/180)
     pygame.draw.line(screen, color, (xcenter_mag, ycenter_mag), (xouter_mag, youter_mag), 2)
     pygame.draw.circle(screen, black, (xcenter_mag, ycenter_mag), 5, 0)
     pygame.draw.circle(screen, color, (xouter_mag, youter_mag), 5, 0)
 
-def render_smart_light(light_id):
-    print("rendering")
-    
-def toggle_smart_light():
-    global light_on 
-    light_on = not light_on
+def draw_gyro_line(middle_cord):
+    xcenter_mag = middle_cord[0]
+    ycenter_mag =  middle_cord[1]
+    xouter_mag = xcenter_mag + 66 * math.cos(-gyro_angle * np.pi/180)
+    youter_mag = ycenter_mag + 66 * math.sin(gyro_angle * np.pi/180)
+    pygame.draw.line(screen, blue, (xcenter_mag, ycenter_mag), (xouter_mag, youter_mag), 2)
+    pygame.draw.circle(screen, black, (xcenter_mag, ycenter_mag), 5, 0)
+    pygame.draw.circle(screen, blue, (xouter_mag, youter_mag), 5, 0)
 
-def display_setup():
-    """Draw Room Display and Initiate Column Lines and Room display"""
-    #Vertical Column Lines
-    pygame.draw.line(screen, white, (width_column1, 0), (width_column1, length_display), 1)
-    pygame.draw.line(screen, white,(column3_xcord, 0), (column3_xcord, length_display), 1)
-    ########  First Column (Room Display)  ############
+def render_room():
+    #########1st Column#######
     #Scale Room to fit Screen: Check if x dimonsion is greater than y, scale display based on X to fill 90% of screen width
     global zero_cordinate
     global scale_dim
@@ -156,10 +192,17 @@ def display_setup():
     screen.blit(ywall_text, (rectx - 35, recty + (y_wall_dis/2) - 30))
     zero_cordinate_text = smallest_font.render("(0,0)", True, red)
     screen.blit(zero_cordinate_text, (rectx - 20, recty - 20))
-
-def calibration_mode_render():
-    #########1st Column#######
-
+    ##Check if mouse position in walls to get posiiton
+    mouse_x, mouse_y = pygame.mouse.get_pos()
+    if ((mouse_x > rectx) and (mouse_x < rectx + x_wall_dis) and (mouse_y > recty) and (mouse_y < recty + y_wall_dis)):
+        pygame.draw.circle(screen, green, (mouse_x, mouse_y), 2, 0)
+        mouse_x = "{:.2f}".format((mouse_x - rectx) /scale_dim)
+        mouse_y  = "{:.2f}".format((mouse_y - recty) / scale_dim)
+        mouse_text = small_font.render(f"X: {mouse_x}m Y: {mouse_y}m", True, green)
+        screen.blit(mouse_text, (20, length_display- 30))
+        pygame.draw.circle(screen, green, (anchorx_pos, anchory_pos), 2, 0)
+        
+    #Draw Items in Room 
     for anchor in range(len(anchor_pos_list)):
         anchorx_pos  = anchor_pos_list[anchor][0] * scale_dim + zero_cordinate[0]
         anchory_pos = anchor_pos_list[anchor][1] * scale_dim + zero_cordinate[1]
@@ -178,6 +221,20 @@ def calibration_mode_render():
     usery_pos = predicted_pos[1] * scale_dim + zero_cordinate[1]
     screen.blit(user_tag_img, (userx_pos, usery_pos))
     pygame.draw.circle(screen, green, (userx_pos, usery_pos), 2, 0)
+    
+def render_smart_light(light_id):
+    print("rendering")
+    
+def toggle_smart_light():
+    global light_on 
+    light_on = not light_on
+
+def calibration_mode_render():
+    #Vertical Column Lines
+    pygame.draw.line(screen, white, (width_column1, 0), (width_column1, length_display), 1)
+    pygame.draw.line(screen, white,(column3_xcord, 0), (column3_xcord, length_display), 1)
+    #########1st Column#######
+    render_room()
     ######2nd Column
     y2_dis = obj_space
     column2_divider = width_column1 + 70
@@ -275,8 +332,12 @@ def calibration_mode_render():
             pygame.draw.line(screen, white, (zobj_text_dis- space, 0), (zobj_text_dis-space, y_obj_dis), 1)
 
 def active_mode_render():
-
-    """Draw Second and Third Column Sensor maps for active mode"""
+    """Draw Display for active mode"""
+    #Vertical Column Lines
+    pygame.draw.line(screen, white, (width_column1, 0), (width_column1, length_display), 1)
+    pygame.draw.line(screen, white,(column3_xcord, 0), (column3_xcord, length_display), 1)
+    ######## First column #########
+    render_room()
     ########  Second Column  ########
     #Column 2 Horizaontal Line Dividers
     pygame.draw.line(screen, white, (width_column1, length_display/3), (column3_xcord, length_display/3), 1)
@@ -300,6 +361,7 @@ def active_mode_render():
     pygame.draw.line(screen, white, middle_point, forward_point)
     tilt_text = smallest_font.render("GX: " + str(G[0]) + ",  GY: " + str(G[1]) + ",  GZ: " + str(G[2]), True, green)
     screen.blit(tilt_text,(width_column1 + 15 ,obj_space + 155))
+    draw_gyro_line(middle_point)
     ###Magnetometer
     mag_text = small_font.render('Magnetometer', True, green)
     angle_text = small_font.render(f"Angle: {mag_angle}", True, green)
@@ -379,10 +441,14 @@ def active_mode_render():
     light_img = pygame.transform.rotozoom(light_img, 0, .40)
     screen.blit(light_img, (middle_column3 - 150 , y_obj_dis + 40))
 
+###Start Everything
+connect_serial()
+
 while running: 
+    if (using_serial):
+        read_serial()
     if (need_render):
-        screen.fill(black)
-        display_setup()  
+        screen.fill(black)  
         if (calibration_mode):
             calibration_mode_render()
         else:
