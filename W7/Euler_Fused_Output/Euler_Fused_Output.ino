@@ -3,13 +3,14 @@
 #include <Adafruit_BNO055.h>
 #include <utility/imumaths.h>
   
-Adafruit_BNO055 bno = Adafruit_BNO055(55);
+Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28);
+// #define SDA1 2
+// #define SCL1 15
 
 void setup(void) 
 {
   Serial.begin(9600);
   Serial.println("Orientation Sensor Test"); 
-  
   /* Initialise the sensor */
   if(!bno.begin())
   {
@@ -24,7 +25,6 @@ void setup(void)
 }
 void loop(){
   imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
-
   /* Display the floating point data */
   Serial.print("");
   Serial.print(euler.x());

@@ -2,17 +2,22 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BNO055.h>
 #include <utility/imumaths.h>
-  
-Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28);
 
+#define I2C_SDA 18
+#define I2C_SCL 19
+
+TwoWire I2CBNO = TwoWire(0);
+Adafruit_BNO055 bno;
+//Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28);
 
 
 void setup(void) 
 {
   Serial.begin(9600);
   Serial.println("Orientation Sensor Test"); 
-  
   /* Initialise the sensor */
+  I2CBNO.begin(I2C_SDA, I2C_SCL, 100000);
+  bno = Adafruit_BNO055(55, 0x28, &I2CBNO);
   if(!bno.begin())
   {
     /* There was a problem detecting the BNO055 ... check your connections */
@@ -24,21 +29,13 @@ void setup(void)
     
   bno.setExtCrystalUse(true);
 }
-
-void loop(void) 
-{
-  /* Get a new sensor event */ 
-  sensors_event_t event; 
-  bno.getEvent(&event);
-  
+void loop(){
+  imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
   /* Display the floating point data */
-  Serial.print("X: ");
-  Serial.print(event.orientation.x, 4);
-  Serial.print("\tY: ");
-  Serial.print(event.orientation.y, 4);
-  Serial.print("\tZ: ");
-  Serial.print(event.orientation.z, 4);
-  Serial.println("");
-  
-  delay(100);
+  Serial.print("");
+  Serial.print(euler.x());
+  Serial.print(", ");
+  Serial.print(euler.y());
+  Serial.print(", ");
+  Serial.println(euler.z());
 }

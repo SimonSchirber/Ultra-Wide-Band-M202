@@ -2,7 +2,6 @@ import pygame
 import math
 import os
 import serial
-import time
 import numpy as np
 
 ######Streaming Data Method####
@@ -12,7 +11,7 @@ using_BLE = False
 
 ######Calibration/Room Setup########
 #Room wall length dimension (X, Y) in meters
-wall_len = [20, 15]
+wall_len = [15, 20]
 #Anchors: Known Cordinates (x,y, z) in room (m) where 0,0,0 is top left corner in diplay
 Anchor1 = [5.29, 11.54, 1.00]
 Anchor2 = [14.32, 3.56, 1.00]
@@ -27,6 +26,8 @@ comb_pos_list = [Anchor1, Anchor2, object1, object2]
 comb_name_list = ["Anchor1", "Anchor2", "Smart Light", "Smart TV"]
 #Magnetometer calibration to which was is north facing in the room
 north_angle = 3*math.pi/4
+###Height which obbjects will be set to unless specificed otherwise
+default_height = 0
 
 ###########Sensor Data Readings#############
 #Magnetometer Angle
@@ -95,7 +96,7 @@ user_tag_img = pygame.transform.rotozoom(user_tag_img, 0., .1)
 def connect_serial():
     global ser
     
-    for i in range(20):
+    for i in range(30):
         try:
             ser = serial.Serial(F'COM{i}', 9600, timeout=1)
             if (ser.isOpen()):
@@ -103,7 +104,7 @@ def connect_serial():
             break
         except:
             print(f"Not Com{i}")
-        if (i == 19):
+        if (i == 29):
             print("no Com found")
             exit()
             break
@@ -113,39 +114,13 @@ def read_serial():
     try:
         arduinoData = ser.readline().decode('ascii')
         orientation = [float(orient) for orient in arduinoData.split(", ")]
-        mag_angle = orientation[0]
-        gyro_angle = orientation[1]
+        mag_angle = orientation[0] - north_angle
+        gyro_angle = orientation[1] 
         
         print(arduinoData)
         need_render = True
     except:
         print("No Byte")
-
-def calibrate_pos(object_number):
-    global predicted_pos
-    global comb_pos_list
-    input_avaialable = False
-    if (object_number == len(comb_pos_list)+ 1):
-        try:
-            x = float(input("X position(m) of User: "))
-            if not(x > 0 and x < wall_len[0]):
-                raise ValueError("Not in x wall range")
-            y = float(input("Y position(m) of User: "))
-            if not(x > 0 and x < wall_len[1]):
-                raise ValueError("Not in Y wall range")
-            predicted_pos[0] = x
-            predicted_pos[1] = y
-            predicted_pos[2] = float(input("Z position(m) of User: "))
-        except:
-            print("Not a valid input")
-    else:
-        object_number -= 1    
-        try:
-            comb_pos_list[object_number][0] = float(input(f"X position(m) of {comb_name_list[object_number]}: "))
-            comb_pos_list[object_number][1] = float(input(f"Y position(m) of Object {comb_name_list[object_number]}: "))
-            comb_pos_list[object_number][2] = float(input(f"Z position(m) of Object {comb_name_list[object_number]}: "))
-        except:
-            print("Not a valid input")
     
 def draw_mag_line(line_angle, color, radius):
     """Draw the lines that move the magnetometer/compass"""
@@ -160,17 +135,49 @@ def draw_mag_line(line_angle, color, radius):
 def draw_gyro_line(middle_cord):
     xcenter_mag = middle_cord[0]
     ycenter_mag =  middle_cord[1]
-    xouter_mag = xcenter_mag + 66 * math.cos(-gyro_angle * np.pi/180)
-    youter_mag = ycenter_mag + 66 * math.sin(gyro_angle * np.pi/180)
+    xouter_mag = xcenter_mag + 66 * math.cos(gyro_angle * np.pi/180)
+    youter_mag = ycenter_mag + 66 * math.sin(-gyro_angle * np.pi/180)
     pygame.draw.line(screen, blue, (xcenter_mag, ycenter_mag), (xouter_mag, youter_mag), 2)
     pygame.draw.circle(screen, black, (xcenter_mag, ycenter_mag), 5, 0)
     pygame.draw.circle(screen, blue, (xouter_mag, youter_mag), 5, 0)
 
+def move_object(user_pos = False, Object_num = None):
+    global predicted_pos, comb_pos_list
+    mouse_x, mouse_y = pygame.mouse.get_pos()
+    mouse_x = (mouse_x - rectx) /scale_dim
+    mouse_y  = (mouse_y - recty) / scale_dim
+    mouse_x = round(mouse_x,2)
+    mouse_y = round(mouse_y, 2)
+    if (user_pos == True):
+        predicted_pos = [mouse_x, mouse_y, 0]
+    elif (Object_num != None):
+        comb_pos_list[Object_num] = [mouse_x, mouse_y, 0]
+
+def calibrate_pos(object_number):
+    global predicted_pos
+    global comb_pos_list
+    object_number -= 1
+    waiting_for_click = True
+    while waiting_for_click:
+        render_room()
+        calibration_mode_render()
+        pygame.display.update()
+        screen.fill(black)
+        for event in pygame.event.get():
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                move_object(Object_num = object_number)
+                waiting_for_click = False
+    # try:
+    #     comb_pos_list[object_number][2] = float(input(f"Z position(m) of Object {comb_name_list[object_number]}: "))
+    # except:
+    #     print("Not a valid Z input")
+    #     comb_pos_list[object_number][2] = default_height
+    comb_pos_list[object_number][2] = default_height
+    
 def render_room():
     #########1st Column#######
     #Scale Room to fit Screen: Check if x dimonsion is greater than y, scale display based on X to fill 90% of screen width
-    global zero_cordinate
-    global scale_dim
+    global zero_cordinate, scale_dim, rectx, recty
     if (wall_len[0] > wall_len[1]):
         scale_dim = width_column1 * .9 / wall_len[0]
         rectx = width_column1 - (.95* width_column1)
@@ -184,7 +191,7 @@ def render_room():
     y_wall_dis = wall_len[1] * scale_dim
     #Draw Walls: rect(TLcorner x, y, xlen, ylen)
     pygame.draw.rect(screen, red, pygame.Rect(rectx, recty, x_wall_dis, y_wall_dis), width = 3)
-    #Add dimension count
+    #Add dimensions to walls
     xwall_text = small_font.render(f"{wall_len[0]}m", True, red)
     ywall_text = small_font.render(f"{wall_len[1]}m", True, red)
     ywall_text = pygame.transform.rotate(ywall_text, 90)
@@ -192,27 +199,22 @@ def render_room():
     screen.blit(ywall_text, (rectx - 35, recty + (y_wall_dis/2) - 30))
     zero_cordinate_text = smallest_font.render("(0,0)", True, red)
     screen.blit(zero_cordinate_text, (rectx - 20, recty - 20))
-    ##Check if mouse position in walls to get posiiton
+    ##Check if mouse position in walls to get posiiton, then drae
     mouse_x, mouse_y = pygame.mouse.get_pos()
     if ((mouse_x > rectx) and (mouse_x < rectx + x_wall_dis) and (mouse_y > recty) and (mouse_y < recty + y_wall_dis)):
         pygame.draw.circle(screen, green, (mouse_x, mouse_y), 2, 0)
         mouse_x = "{:.2f}".format((mouse_x - rectx) /scale_dim)
         mouse_y  = "{:.2f}".format((mouse_y - recty) / scale_dim)
         mouse_text = small_font.render(f"X: {mouse_x}m Y: {mouse_y}m", True, green)
-        screen.blit(mouse_text, (20, length_display- 30))
-        pygame.draw.circle(screen, green, (anchorx_pos, anchory_pos), 2, 0)
-        
+        screen.blit(mouse_text, (20, length_display- 30))     
     #Draw Items in Room 
-    for anchor in range(len(anchor_pos_list)):
-        anchorx_pos  = anchor_pos_list[anchor][0] * scale_dim + zero_cordinate[0]
-        anchory_pos = anchor_pos_list[anchor][1] * scale_dim + zero_cordinate[1]
-        screen.blit(anchor_img, (anchorx_pos, anchory_pos))
-        pygame.draw.circle(screen, green, (anchorx_pos, anchory_pos), 2, 0)
-    for device in range(len(obj_pos_list)):
-        devicex_pos = obj_pos_list[device][0] * scale_dim + zero_cordinate[0]
-        devicey_pos = obj_pos_list[device][1] * scale_dim + zero_cordinate[1]
-        device_name = obj_name_list[device].lower()
-        if ("light" in device_name):
+    for device in range(len(comb_pos_list)):
+        devicex_pos = comb_pos_list[device][0] * scale_dim + zero_cordinate[0]
+        devicey_pos = comb_pos_list[device][1] * scale_dim + zero_cordinate[1]
+        device_name = comb_name_list[device].lower()
+        if ("anchor" in device_name):
+            screen.blit(anchor_img, (devicex_pos,devicey_pos))
+        elif ("light" in device_name):
             screen.blit(bulb_img, (devicex_pos,devicey_pos))
         elif ('tv' in device_name):
             screen.blit(tv_img, (devicex_pos,devicey_pos))
@@ -235,6 +237,8 @@ def calibration_mode_render():
     pygame.draw.line(screen, white,(column3_xcord, 0), (column3_xcord, length_display), 1)
     #########1st Column#######
     render_room()
+    active_menu_text = smallest_font.render("'A': Active Mode Menu", True, green)
+    screen.blit(active_menu_text, (width_column1 - 150, length_display - 25))
     ######2nd Column
     y2_dis = obj_space
     column2_divider = width_column1 + 70
@@ -338,6 +342,8 @@ def active_mode_render():
     pygame.draw.line(screen, white,(column3_xcord, 0), (column3_xcord, length_display), 1)
     ######## First column #########
     render_room()
+    calib_menu_text = smallest_font.render("'C': Calibration Menu", True, green)
+    screen.blit(calib_menu_text, (width_column1 - 150, length_display - 25))
     ########  Second Column  ########
     #Column 2 Horizaontal Line Dividers
     pygame.draw.line(screen, white, (width_column1, length_display/3), (column3_xcord, length_display/3), 1)
@@ -364,7 +370,7 @@ def active_mode_render():
     draw_gyro_line(middle_point)
     ###Magnetometer
     mag_text = small_font.render('Magnetometer', True, green)
-    angle_text = small_font.render(f"Angle: {mag_angle}", True, green)
+    angle_text = small_font.render(f"Angle: {round(mag_angle,2)}", True, green)
     screen.blit(mag_text, (width_column1 + 30,  length_display/3 + space))
     radius_mag = length_display*1/9
     pygame.draw.circle(screen, grey, ((width_column1 + column3_xcord)/2, length_display * .5), radius_mag, 0) 
@@ -373,10 +379,10 @@ def active_mode_render():
     draw_mag_line(mag_angle, green, radius_mag)
     screen.blit(angle_text, (width_column1 +60, 2/3*length_display - 35))
     ###Predictions
-    prediction_text = small_font.render('Predictions', True, green)
-    x_pred_text = small_font.render(f'X(m): {predicted_pos[0]}', True, green)
-    y_pred_text = small_font.render(f'Y(m): {predicted_pos[1]}', True, green)
-    z_pred_text = small_font.render(f'Z(m): {predicted_pos[2]}', True, green)
+    prediction_text = small_font.render('Pos Prediction', True, green)
+    x_pred_text = small_font.render(f'X(m): {"{:.2f}".format(predicted_pos[0])}m', True, green)
+    y_pred_text = small_font.render(f'Y(m): {"{:.2f}".format(predicted_pos[1])}m', True, green)
+    z_pred_text = small_font.render(f'Z(m): {"{:.2f}".format(predicted_pos[2])}m', True, green)
     screen.blit(prediction_text, (column_head_pos,  length_display *2/3 + space))
     screen.blit(x_pred_text, (width_column1 + 20,  length_display *2/3 + 50))
     screen.blit(y_pred_text, (width_column1 + 20,  length_display *2/3 + 100))
@@ -480,19 +486,27 @@ while running:
             elif event.key == pygame.K_7:
                 calibrate_pos(7)
             elif event.key == pygame.K_g:
-                calibrate_pos(7)
+                print("pressed G")
             elif event.key == pygame.K_d:
-                calibrate_pos(7)
+                print("pressed D")
             elif event.key == pygame.K_m:
-                calibrate_pos(7)
+                print("Calibrated Manotometer")
+                north_angle = orientation[0]
             elif event.key == pygame.K_u:
                 calibrate_pos(7)
+                print("pressed U")
             elif event.key == pygame.K_g:
                 calibrate_pos(7)
+                print("pressed G")
             elif event.key == pygame.K_r:
                 calibrate_pos(7)
+                print("pressed R")
+            elif event.key == pygame.K_I:
+                print("calibrating IMU")
+                
             calibration_mode_render()
-            
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            move_object(user_pos = True)    
 
             
 
