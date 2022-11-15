@@ -4,6 +4,9 @@ Using UWB and IMU measurements to aide in localization.
 Code/resources that are finalized to be shared and tested is put in main folder.
 All other weekly research and development and code forks in progress are put into the corresponding "WX" folder
 
+# Notes
+
+On the controller/initiator board when uploading the initiator, you need to yank out slot 29 or it will fail to upload. After upload you can reset and start.
 
 # To Do
 - Soldering for UWB chip/Dev Board 
