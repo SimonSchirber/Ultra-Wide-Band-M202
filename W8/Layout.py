@@ -475,19 +475,26 @@ def anchor_dis_calc():
 def tag_pos_calc():
     global predicted_pos
     try:
-        cos_tag = (anchor1_dis**2 + anchor2_dis**2 - dis_anchors**2)/ (2*anchor2_dis*anchor1_dis)
+        x1, x2 = comb_pos_list[0][0], comb_pos_list[1][0]
+        y1, y2 = comb_pos_list[0][1], comb_pos_list[1][1]
+        r1, r2 = anchor1_dis, anchor2_dis
+        
+        d = math.sqrt((x1-x2)**2 + (y1 - y2)**2)
+        
+        l = (r1**2 - r2**2 + d **2)/(2*d)
+        h = math.sqrt(r1**2 - l**2)
+        solution1x =  l * (x2-x1)/d  - h*(y2-y1)/d + x1
+        solution1y = l * (y2-y1)/d  + h*(x2 - x1)/d + y1
+        solution2x =  l * (x2-x1)/d  - h*(y2-y1)/d + x1
+        solution2y = l * (y2-y1)/d  + h*(x2 - x1)/d + y1
+        if (solution1x > 0 and solution1x < wall_len[0] and solution1y >0 and solution1y < wall_len[1]):
+            predicted_pos[0] = solution1x
+            predicted_pos[1] = solution1y
+        elif (solution2x > 0 and solution2x < wall_len[0] and solution2y >0 and solution2y < wall_len[1]):
+            predicted_pos[0] = solution2x
+            predicted_pos[1] = solution2y
     except:
-        print("anchors 0 dis")
-    try:
-        predicted_pos[0] = anchor1_dis * cos_tag
-        predicted_pos[1] = anchor1_dis * math.sqrt(1 - cos_tag**2)
-        predicted_pos[0] = predicted_pos[0].real
-        predicted_pos[1] = predicted_pos[1].real
-        print(f"Pred X: {predicted_pos[0]}, Pred Y: {predicted_pos[0]}")
-        print(f"Anchor 1 Dis: {anchor1_dis}, Anchor 2 Dis: {anchor2_dis}, cos_tag = {cos_tag}")
-
-    except:
-        print(f"unsolvable cos_tag more than one: cos_tag = {cos_tag}, anchor_dis =  {dis_anchors}, anchor1_dis = {anchor1_dis}, anchor2_dis = {anchor2_dis}")
+        print(f"unsolvable cos_tag more than one: anchor_dis =  {dis_anchors}, anchor1_dis = {anchor1_dis}, anchor2_dis = {anchor2_dis}")
     # predicted_pos[0] = anchor1_dis * cos_tag
     # predicted_pos[1] = anchor1_dis * math.sqrt(1 - cos_tag**2)
 

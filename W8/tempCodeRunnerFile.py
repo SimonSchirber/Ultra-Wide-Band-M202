@@ -1,6 +1,8 @@
-uwb_text = smallest_font.render("Calibrate UWB (2m)", True, green)
-    # uwbkey_text = small_font.render("U", True, green)
-    # screen.blit(uwb_text, (column2_divider + space, y2_dis + space))
-    # screen.blit(uwbkey_text, (width_column1 + space, y2_dis + space))
-    # y2_dis += obj_space
-    # pygame.draw.line(screen, white, (width_column1, y2_dis ), (column3_xcord,y2_dis))
+x1, x2 = comb_pos_list[0][0], comb_pos_list[1][0]
+    y1, y2 = comb_pos_list[0][1], comb_pos_list[1][1]
+    r1, r2 = anchor1_dis, anchor2_dis
+    d = math.sqrt((x1-x2)**2 + (y1 - y2)**2)
+    l = (r1**2 - r2**2 + d **2)
+    h = math.sqrt(r1**2 - l**2)
+    predicted_pos[0] = l/d * (x2-x1) + h/d(y2-y1) + x1
+    predicted_pos[1] = l/d * (y2-y1) - h/d(x2 - x1) + y1
