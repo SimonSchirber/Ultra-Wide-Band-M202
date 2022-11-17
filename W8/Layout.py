@@ -14,8 +14,8 @@ using_BLE = False
 #Room wall length dimension (X, Y) in meters
 wall_len = [6, 10]
 #Anchors: Known Cordinates (x,y, z) in room (m) where 0,0,0 is top left corner in diplay
-Anchor1 = [0, 0, 1.00]
-Anchor2 = [1.5, 0, 1.00]
+Anchor1 = [0, 0, 0]
+Anchor2 = [1.5, 0, 1.2]
 dis_anchors = 0
 anchor1_dis = .5
 anchor2_dis = .5
@@ -48,10 +48,12 @@ anchor_dist_list = [5.45, 10.3]
 
 #####Predictions#####
 #User Predicted Position (Tag Position, x, y, z)
-predicted_pos = [0, 0, 0]
+predicted_pos = [0, 0, 1]
 orientation = [0, 0, 0]
 predicted_device = "Smart Light"
 show_anchor_pos = False
+tracking = False
+tracked_pos = []
 
 ######Pygame Display Settings####
 white = (255, 255, 255)
@@ -230,7 +232,12 @@ def render_room():
                 if (device % 2 == 0):
                     color = blue
                 for i in range(5):
-                    pygame.draw.circle(screen, color, (devicex_pos, devicey_pos ), (i+1)*scale_dim , 2)
+                    #draw lines for every meter
+                    sphere_radius = i + 1
+                    dist_from_center = comb_pos_list[device][2] - predicted_pos[2]
+                    circle_radius = calc_circle_radius( dist_from_center, sphere_radius)
+
+                    pygame.draw.circle(screen, color, (devicex_pos, devicey_pos ), circle_radius*scale_dim , 2)
         elif ("light" in device_name):
             screen.blit(bulb_img, (devicex_pos,devicey_pos))
         elif ('tv' in device_name):
@@ -254,7 +261,7 @@ def calibration_mode_render():
     pygame.draw.line(screen, white,(column3_xcord, 0), (column3_xcord, length_display), 1)
     #########1st Column#######
     render_room()
-    active_menu_text = smallest_font.render("'A': Active Mode", True, green)
+    active_menu_text = smallest_font.render("'A': Active Menu", True, green)
     screen.blit(active_menu_text, (width_column1 - 150, length_display - 25))
     ######2nd Column
     y2_dis = obj_space
@@ -267,7 +274,7 @@ def calibration_mode_render():
     screen.blit(function_text, (width_column1 + 70 + space, space))
     num_objects = len(comb_pos_list)
     hot_key = 1
-    calibrate_text = smallest_font.render("Recalibrate Posiiton ->", True, green)
+    calibrate_text = smallest_font.render("Recalibrate Positon ->", True, green)
     for object in range(num_objects):
         hotkey_text = small_font.render(str(hot_key), True, green)
         screen.blit(hotkey_text, (width_column1 + space, y2_dis + space))
@@ -282,42 +289,36 @@ def calibration_mode_render():
     hot_key +=1
     y2_dis += obj_space
     pygame.draw.line(screen, white, (width_column1, y2_dis ), (column3_xcord,y2_dis))
-    # gyro_text = smallest_font.render("Calibrate Gyro", True, green)
-    # gyrokey_text = small_font.render("G", True, green)
-    # screen.blit(gyro_text, (column2_divider + space, y2_dis + space))
-    # screen.blit(gyrokey_text, (width_column1 + space, y2_dis + space))
-    # y2_dis += obj_space
-    # pygame.draw.line(screen, white, (width_column1, y2_dis ), (column3_xcord,y2_dis))
-    # accel_text = smallest_font.render("Calibrate Accelerometer", True, green)
-    # accelkey_text = small_font.render("D", True, green)
-    # screen.blit(accel_text, (column2_divider + space, y2_dis + space))
-    # screen.blit(accelkey_text, (width_column1 + space, y2_dis + space))
-    # y2_dis += obj_space
-    # pygame.draw.line(screen, white, (width_column1, y2_dis ), (column3_xcord,y2_dis))
     mag_text = smallest_font.render("Calibrate Mag", True, green)
     magkey_text = small_font.render("M", True, green)
     screen.blit(mag_text, (column2_divider + space, y2_dis + space))
     screen.blit(magkey_text, (width_column1 + space, y2_dis + space))
     y2_dis += obj_space
     pygame.draw.line(screen, white, (width_column1, y2_dis ), (column3_xcord,y2_dis))
-    # uwb_text = smallest_font.render("Calibrate UWB (2m)", True, green)
-    # uwbkey_text = small_font.render("U", True, green)
-    # screen.blit(uwb_text, (column2_divider + space, y2_dis + space))
-    # screen.blit(uwbkey_text, (width_column1 + space, y2_dis + space))
-    # y2_dis += obj_space
-    # pygame.draw.line(screen, white, (width_column1, y2_dis ), (column3_xcord,y2_dis))
-    tag_text = smallest_font.render("Show Distance Lines", True, green)
+    tag_text = smallest_font.render("Show UWB meter Lines", True, green)
     tagkey_text = small_font.render("S", True, green)
     screen.blit(tag_text, (column2_divider + space, y2_dis + space))
     screen.blit(tagkey_text, (width_column1 + space, y2_dis + space))
     y2_dis += obj_space
     pygame.draw.line(screen, white, (width_column1, y2_dis ), (column3_xcord,y2_dis))
-    reconnect_text = smallest_font.render("Reconnect tag", True, green)
-    reconnectkey_text = small_font.render("R", True, green)
+    reconnect_text = smallest_font.render("Stop/Start Track Pos", True, green)
+    reconnectkey_text = small_font.render("T", True, green)
     screen.blit(reconnect_text, (column2_divider + space, y2_dis + space))
     screen.blit(reconnectkey_text, (width_column1 + space, y2_dis + space))
     y2_dis += obj_space
     pygame.draw.line(screen, white, (width_column1, y2_dis ), (column3_xcord,y2_dis))
+    reconnect_text = smallest_font.render("Clear Tracking Pos", True, green)
+    reconnectkey_text = small_font.render("Q", True, green)
+    screen.blit(reconnect_text, (column2_divider + space, y2_dis + space))
+    screen.blit(reconnectkey_text, (width_column1 + space, y2_dis + space))
+    y2_dis += obj_space
+    pygame.draw.line(screen, white, (width_column1, y2_dis ), (column3_xcord,y2_dis))
+    # reconnect_text = smallest_font.render("Reconnect tag", True, green)
+    # reconnectkey_text = small_font.render("R", True, green)
+    # screen.blit(reconnect_text, (column2_divider + space, y2_dis + space))
+    # screen.blit(reconnectkey_text, (width_column1 + space, y2_dis + space))
+    # y2_dis += obj_space
+    # pygame.draw.line(screen, white, (width_column1, y2_dis ), (column3_xcord,y2_dis))
 
     #######3rd Column#####
     ###Anchor/Smart Device Positions
@@ -345,12 +346,29 @@ def calibration_mode_render():
         screen.blit(y_data_text, (yobj_text_dis, space + y_obj_dis))
         screen.blit(z_data_text, (zobj_text_dis, space + y_obj_dis))   
         #Draw the bottom line and horizontal dividers
-        if (obj_num ==  len(comb_pos_list) - 1):
-            y_obj_dis = (2 + obj_num) * obj_space
-            pygame.draw.line(screen, white, (column3_xcord, y_obj_dis), (width_display, y_obj_dis), 1)
-            pygame.draw.line(screen, white, (xobj_text_dis-space, 0), (xobj_text_dis-space, y_obj_dis), 1)
-            pygame.draw.line(screen, white, (yobj_text_dis- space, 0), (yobj_text_dis-space, y_obj_dis), 1)
-            pygame.draw.line(screen, white, (zobj_text_dis- space, 0), (zobj_text_dis-space, y_obj_dis), 1)
+        # if (obj_num ==  len(comb_pos_list) - 1):
+        #     y_obj_dis = (2 + obj_num) * obj_space
+        #     pygame.draw.line(screen, white, (column3_xcord, y_obj_dis), (width_display, y_obj_dis), 1)
+        #     pygame.draw.line(screen, white, (xobj_text_dis-space, 0), (xobj_text_dis-space, y_obj_dis), 1)
+        #     pygame.draw.line(screen, white, (yobj_text_dis- space, 0), (yobj_text_dis-space, y_obj_dis), 1)
+        #     pygame.draw.line(screen, white, (zobj_text_dis- space, 0), (zobj_text_dis-space, y_obj_dis), 1)
+    ##Add user Pos
+    y_obj_dis += obj_space
+    pygame.draw.line(screen, white, (column3_xcord, y_obj_dis), (width_display, y_obj_dis), 1)
+    x_data_text = small_font.render(str(round(predicted_pos[0], 2)), True, green)
+    y_data_text = small_font.render(str(round(predicted_pos[1], 2)), True, green)
+    z_data_text = small_font.render(str(round(predicted_pos[2], 2)), True, green)
+    name_data_text = smallest_font.render("Pred User Pos", True, green)
+    screen.blit(name_data_text, (space + column3_xcord, space + y_obj_dis))
+    screen.blit(x_data_text, (xobj_text_dis, space + y_obj_dis))
+    screen.blit(y_data_text, (yobj_text_dis, space + y_obj_dis))
+    screen.blit(z_data_text, (zobj_text_dis, space + y_obj_dis))   
+    y_obj_dis += obj_space
+    pygame.draw.line(screen, white, (column3_xcord, y_obj_dis), (width_display, y_obj_dis), 1)
+    pygame.draw.line(screen, white, (column3_xcord, y_obj_dis), (width_display, y_obj_dis), 1)
+    pygame.draw.line(screen, white, (xobj_text_dis-space, 0), (xobj_text_dis-space, y_obj_dis), 1)
+    pygame.draw.line(screen, white, (yobj_text_dis- space, 0), (yobj_text_dis-space, y_obj_dis), 1)
+    pygame.draw.line(screen, white, (zobj_text_dis- space, 0), (zobj_text_dis-space, y_obj_dis), 1)
 
 def active_mode_render():
     """Draw Display for active mode"""
@@ -472,21 +490,28 @@ def anchor_dis_calc():
     global dis_anchors
     dis_anchors = math.sqrt((comb_pos_list[0][0] - comb_pos_list[1][0])**2 + (comb_pos_list[0][1] - comb_pos_list[1][1])**2)
 
+def calc_circle_radius(dist_to_plane, sphere_raduis):
+    try:
+        radius = math.sqrt(sphere_raduis**2 - dist_to_plane**2)
+        return radius
+    except:
+        return 0
+
 def tag_pos_calc():
     global predicted_pos
     try:
+        dist_from_center1 = comb_pos_list[0][2] - predicted_pos[2]
+        dist_from_center2 = comb_pos_list[1][2] - predicted_pos[2]
         x1, x2 = comb_pos_list[0][0], comb_pos_list[1][0]
         y1, y2 = comb_pos_list[0][1], comb_pos_list[1][1]
-        r1, r2 = anchor1_dis, anchor2_dis
-        
+        r1, r2 = calc_circle_radius(dist_from_center1, anchor1_dis), calc_circle_radius(dist_from_center2, anchor2_dis)
         d = math.sqrt((x1-x2)**2 + (y1 - y2)**2)
-        
         l = (r1**2 - r2**2 + d **2)/(2*d)
         h = math.sqrt(r1**2 - l**2)
         solution1x =  l * (x2-x1)/d  - h*(y2-y1)/d + x1
         solution1y = l * (y2-y1)/d  + h*(x2 - x1)/d + y1
-        solution2x =  l * (x2-x1)/d  - h*(y2-y1)/d + x1
-        solution2y = l * (y2-y1)/d  + h*(x2 - x1)/d + y1
+        solution2x =  l * (x2-x1)/d  + h*(y2-y1)/d + x1
+        solution2y = l * (y2-y1)/d  - h*(x2 - x1)/d + y1
         if (solution1x > 0 and solution1x < wall_len[0] and solution1y >0 and solution1y < wall_len[1]):
             predicted_pos[0] = solution1x
             predicted_pos[1] = solution1y
@@ -494,10 +519,8 @@ def tag_pos_calc():
             predicted_pos[0] = solution2x
             predicted_pos[1] = solution2y
     except:
-        print(f"unsolvable cos_tag more than one: anchor_dis =  {dis_anchors}, anchor1_dis = {anchor1_dis}, anchor2_dis = {anchor2_dis}")
-    # predicted_pos[0] = anchor1_dis * cos_tag
-    # predicted_pos[1] = anchor1_dis * math.sqrt(1 - cos_tag**2)
-
+        print(f"unsolvable: anchor_dis =  {dis_anchors}, anchor1_dis = {anchor1_dis}, anchor2_dis = {anchor2_dis}")
+    
 ###Start Everything
 connect_serial()
 anchor_dis_calc()
@@ -550,8 +573,24 @@ while running:
                     show_anchor_pos = True
                 else:
                     show_anchor_pos = False
-            elif event.key == pygame.K_r:
-                print("pressed R")
+            elif event.key == pygame.K_m:
+                print("Calibrated Magnetometer")
+                north_angle = orientation[0]
+            elif event.key == pygame.K_t:
+                if (tracking == False):
+                    print("Tracking")
+                    tracking = True
+                else:
+                    print("Stopped Tracking")
+                    tracking = False
+
+
+            elif event.key == pygame.K_q:
+                print("Clear tracking")
+                tracking = True
+
+
+            
             
                 
             calibration_mode_render()
