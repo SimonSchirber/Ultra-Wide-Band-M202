@@ -2,7 +2,7 @@ import serial, time, math
 import pandas as pd
 
 
-serial_data = [0,0,0,0]
+serial_data = []
 time_data = []
 x_drift, y_drift, z_drift = [], [], []
 vel_x, vel_y, vel_z = [], [], []
