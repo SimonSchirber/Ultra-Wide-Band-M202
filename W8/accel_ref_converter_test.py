@@ -36,3 +36,6 @@ x = ax_x + ay_x + az_x
 y = ax_y + ay_y + az_y
 z = ax_z + ay_z + az_z
 print(x,y,z)
+
+### Need to subtract gravity to az
+#Check values versus identity

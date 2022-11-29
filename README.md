@@ -6,7 +6,7 @@ All other weekly research and development and code forks in progress are put int
 
 # Notes
 
-On the controller/initiator board when uploading the initiator, you need to yank out slot 29 or it will fail to upload. After upload you can reset and start.
+On the controller/initiator board when uploading the initiator, you need to yank outradius slot 29 or it will fail to upload. After upload you can reset and start.
 
 # To Do
 - Soldering for UWB chip/Dev Board 
