@@ -88,13 +88,13 @@ void TranslateAccel(){
   ax_y = ax * sin(radian(alpha)) * cos(radian(beta));
   ax_z = -ax * sin(radian(beta));
 
-  ay_x = ay * cos(radian(alpha))* sin(radian(beta))* cos(radian(Gamma)) + sin(radian(alpha))*cos(radian(Gamma));
-  ay_y = ay * sin(radian(alpha))* sin(radian(beta))* sin(radian(Gamma)) + cos(radian(alpha))*cos(radian(Gamma));
+  ay_x = ay * (cos(radian(alpha))* sin(radian(beta))* cos(radian(Gamma)) + sin(radian(alpha))*cos(radian(Gamma)));
+  ay_y = ay * (sin(radian(alpha))* sin(radian(beta))* sin(radian(Gamma)) + cos(radian(alpha))*cos(radian(Gamma)));
   ay_z = ay * cos(radian(beta)) * sin(radian(Gamma));
 
-  az_x = az * cos(radian(alpha)) * sin(radian(beta))* cos(radian(Gamma)) + sin(radian(alpha)) * sin(radian(Gamma));
-  az_y = az * sin(radian(alpha)) * sin(radian(beta))* cos(radian(Gamma)) - cos(radian(alpha)) * sin(radian(Gamma));
-  az_z = az * cos(radian(beta)) * cos(radian(Gamma));
+  az_x = az * (cos(radian(alpha)) * sin(radian(beta))* cos(radian(Gamma)) + sin(radian(alpha)) * sin(radian(Gamma)));
+  az_y = az * (sin(radian(alpha)) * sin(radian(beta))* cos(radian(Gamma)) - cos(radian(alpha)) * sin(radian(Gamma)));
+  az_z = az * (cos(radian(beta)) * cos(radian(Gamma)));
 
   axT = ax_x + ay_x + az_x;
   ayT = ax_y + ay_y + az_y;
