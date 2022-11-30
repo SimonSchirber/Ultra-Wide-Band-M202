@@ -14,7 +14,8 @@ for i in range(30):
             print(f"Using Com{i}")
         break
     except:
-        print(f"Not Com{i}")
+        print(f"Com{i} not open at 115200")
+        ser.close()
     if (i == 29):
         print("No Com port detected in range 29")
         exit()
@@ -58,7 +59,7 @@ def TranslateAccel():
     # print(az_x, az_y, az_z)
     # print(math.sqrt(az_x ** 2 + az_y ** 2 + az_z ** 2))
 
-    
+
     x = ax_x + ay_x + az_x
     y = ax_y + ay_y + az_y
     z = ax_z + ay_z + az_z
@@ -67,7 +68,7 @@ def TranslateAccel():
 time.sleep(1)
 while True:
     ReadSerial()
+    time.sleep(.125)
 
         
 
-ser.close()
