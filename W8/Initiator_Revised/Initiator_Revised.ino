@@ -6,6 +6,13 @@ const uint8_t PIN_RST = 27; // reset pin
 const uint8_t PIN_IRQ = 34; // irq pin
 const uint8_t PIN_SS = 4; // spi select pin
 
+dwt_txconfig_t my_txconfig_options =
+{
+    0x34,           /* PG delay. */
+    0xfdfdfdfd,      /* TX power. */
+    0x0             /*PG count*/
+};
+
 ////////Anchor Branches/////
 int anchor_num = 1;
 //Low Pass Filter to Smooth Readings of UWB over samples////////
