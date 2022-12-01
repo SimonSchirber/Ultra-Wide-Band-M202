@@ -2,10 +2,10 @@ import pygame,math, os, serial
 import numpy as np
 
 ######Streaming Data Method####
-using_serial = True
+DATA_POINT_HEADER = ["Time (sec)", "Alpha", "Beta", "Gamma", "Ax", "Ay", "Az", "AxT", "AyT", "AzT", "pos_dx,", "pos_dy", "pos_dz", "Anchor_1_dis", "Anchor_2_dis"]
+NUM_DATA_POINTS = len(DATA_POINT_HEADER)
 BAUD_RATE = 115200
 ser = 0
-using_BLE = False
 
 ######Calibration/Room Setup########
 #Room wall length dimension (X, Y) in meters
@@ -26,27 +26,36 @@ obj_name_list = ["Smart Light", "Smart TV"]
 comb_pos_list = [Anchor1, Anchor2, object1, object2]
 comb_name_list = ["Anchor1", "Anchor2", "Smart Light", "Smart TV"]
 #Magnetometer calibration to which was is north facing in the room
-north_angle = 3*math.pi/4
-###Height which obbjects will be set to unless specificed otherwise
+alpha_offset = 0
+###Accelerometer offsets
+ax_offset, ay_offset, az_offset = 0, 0, 0
+###Height which objects will be set to unless specificed otherwise
 default_height = 0
 
 ###########Sensor Data Readings#############
 #Magnetometer Angle
-mag_angle = 0
+alpha = 0
 ###Gyroscope Angle####
-gyro_angle = 0
+beta = 0
+####Barrel Role Angle(Not displayed)####
+gamma = 0
+###########Calculated Change in Distance (200ms every print * 3moving average = .6 sec Mean)#######
+pos_dx, pos_dy, pos_dz = [0,0,0], [0,0,0], [0,0,0]
+### .6s Moving average distance sum
+dx, dy, dz = 0, 0, 0
+
 #Gyroscope Readings (Gx, Gy, Gz)
 G = [10, 5.26, -1.3]
-#Accelerometer Readings(Ax, Ay, Az)
+#Raw Accelerometer Readings(Ax, Ay, Az)
 A = [32.5, 72.97, 32.56]
+#Tranlated Accelerometer Readings
+A_T = [0, 0, 0]
 #Anchor Relatives Distances from tag (one dist reading/anchor)
 anchor_dist_list = [5.45, 10.3]
-
 
 #####Predictions#####
 #User Predicted Position (Tag Position, x, y, z)
 predicted_pos = [0, 0, 1]
-orientation = [0, 0, 0]
 predicted_device = "Smart Light"
 show_anchor_pos = False
 tracking = False
@@ -63,6 +72,7 @@ yellow= (255, 255, 0)
 wall_color = red
 calibration_mode = False
 need_render = True
+
 #Display Dimensions, where column 1 is room display
 length_display = 700
 width_column1 = 700
@@ -98,6 +108,9 @@ tv_img = pygame.transform.rotozoom(tv_img, 0., .05)
 user_tag_img = pygame.image.load(images_dir + "\\user.png").convert_alpha()
 user_tag_img = pygame.transform.rotozoom(user_tag_img, 0., .1)
 
+def average(myArray):
+    return sum(myArray)/len(myArray)
+
 def connect_serial():
     global ser
     for i in range(30):
@@ -114,19 +127,44 @@ def connect_serial():
             break
          
 def read_serial():
-    global orientation, need_render, mag_angle, gyro_angle, anchor1_dis, anchor2_dis
+    global need_render, alpha, beta, gamma, A, A_T, pos_dx, pos_dy, pos_dz, anchor1_dis, anchor2_dis, ax_offset, ay_offset, az_offset, alpha_offset
+    #["Time (sec)", "Alpha", "Beta", "Gamma", "Ax", "Ay", "Az", "AxT", "AyT", "AzT", "pos_dx,", "pos_dy", "pos_dz", "Anchor_1_dis", "Anchor_2_dis"]
     try:
         arduinoData = ser.readline().decode('ascii')
         print(arduinoData)
-        orientation = [float(orient) for orient in arduinoData.split(", ")]      
-        if (len(orientation)== 5):
-            mag_angle = orientation[0] - north_angle
-            gyro_angle = orientation[1]
-            anchor1_dis = orientation[3]/39.7
-            anchor2_dis = orientation[4]/39.7
+        serial_data_input = [float(data) for data in arduinoData.split(", ")]
+        need_render = True      
+        if (len(serial_data_input) == NUM_DATA_POINTS):
+            #Angles
+            alpha = serial_data_input[1] 
+            beta = serial_data_input[2]
+            gamma = serial_data_input[3]
+            #Raw Accel
+            A[0] = serial_data_input[4] 
+            A[1] = serial_data_input[5] 
+            A[2] = serial_data_input[6] 
+            #Translated Accel
+            A_T[0] = serial_data_input[7] 
+            A_T[1] = serial_data_input[8] 
+            A_T[1] = serial_data_input[9] 
+            #Moving average dx, dy, dz
+            pos_dx.pop(0)
+            pos_dx = pos_dx.append(serial_data_input[10])
+            pos_dy.pop(0)
+            pos_dy = pos_dy.append(serial_data_input[11])
+            pos_dz.pop(0)
+            pos_dz = pos_dz.append(serial_data_input[12])
+            #Anchor Distances
+            anchor1_dis = serial_data_input[-2]/39.7
+            anchor2_dis = serial_data_input[-1]/39.7
             need_render = True
+        elif (serial_data_input == 4):
+            ax_offset = serial_data_input[0]
+            ay_offset = serial_data_input[1]
+            az_offset = serial_data_input[2]
+            alpha_offset = serial_data_input[3]
         else:
-            print("faulty input")
+            print("Faulty input. Check if UWB out of Range?")
     except:
         print("No Byte")
     
@@ -134,8 +172,8 @@ def draw_mag_line(line_angle, color, radius):
     """Draw the lines that move the magnetometer/compass"""
     xcenter_mag = (width_column1 + column3_xcord)/2
     ycenter_mag =  length_display*.5
-    xouter_mag = xcenter_mag + radius * math.cos(line_angle * np.pi/180)
-    youter_mag = ycenter_mag + radius * math.sin(line_angle * np.pi/180)
+    xouter_mag = xcenter_mag + radius * math.sin(line_angle * np.pi/180)
+    youter_mag = ycenter_mag - radius * math.cos(line_angle * np.pi/180)
     pygame.draw.line(screen, color, (xcenter_mag, ycenter_mag), (xouter_mag, youter_mag), 2)
     pygame.draw.circle(screen, black, (xcenter_mag, ycenter_mag), 5, 0)
     pygame.draw.circle(screen, color, (xouter_mag, youter_mag), 5, 0)
@@ -143,11 +181,21 @@ def draw_mag_line(line_angle, color, radius):
 def draw_gyro_line(middle_cord):
     xcenter_mag = middle_cord[0]
     ycenter_mag =  middle_cord[1]
-    xouter_mag = xcenter_mag + 66 * math.cos(gyro_angle * np.pi/180)
-    youter_mag = ycenter_mag + 66 * math.sin(-gyro_angle * np.pi/180)
+    xouter_mag = xcenter_mag + 66 * math.cos(beta * np.pi/180)
+    youter_mag = ycenter_mag + -66 * math.sin(beta * np.pi/180)
     pygame.draw.line(screen, blue, (xcenter_mag, ycenter_mag), (xouter_mag, youter_mag), 2)
     pygame.draw.circle(screen, black, (xcenter_mag, ycenter_mag), 5, 0)
     pygame.draw.circle(screen, blue, (xouter_mag, youter_mag), 5, 0)
+
+def draw_accel_data(centerxy, centerz):
+    ###Assuming full = 75 pixels
+    mag_x = average(pos_dx) * 10
+    mag_y = average(pos_dy) * 10
+    mag_z = average(pos_dz) * 10
+    pygame.draw.line(screen, blue, (centerxy[0], centerxy[1]), (centerxy[0] + mag_x, centerxy[1] + mag_y), 2)
+    pygame.draw.line(screen, blue,(centerz[0], centerxy[1]), (centerz[0], centerxy[1] - mag_z), 2)
+    pygame.draw.circle(screen, black, (centerxy[0], centerxy[1]), 5, 0)
+    pygame.draw.circle(screen, black, (centerz[0], centerxy[1]), 5, 0)
 
 def move_object(user_pos = False, Object_num = None):
     global predicted_pos, comb_pos_list
@@ -401,13 +449,13 @@ def active_mode_render():
     draw_gyro_line(middle_point)
     ###Magnetometer
     mag_text = small_font.render('Magnetometer', True, green)
-    angle_text = small_font.render(f"Angle: {round(mag_angle,2)}", True, green)
+    angle_text = small_font.render(f"Angle: {round(alpha,2)}", True, green)
     screen.blit(mag_text, (width_column1 + 30,  length_display/3 + space))
     radius_mag = length_display*1/9
     pygame.draw.circle(screen, grey, ((width_column1 + column3_xcord)/2, length_display * .5), radius_mag, 0) 
     pygame.draw.circle(screen, white, ((width_column1 + column3_xcord)/2, length_display * .5), radius_mag, 3)
-    draw_mag_line(north_angle, red, radius_mag)
-    draw_mag_line(mag_angle, green, radius_mag)
+    draw_mag_line(alpha_offset, red, radius_mag)
+    draw_mag_line(alpha, green, radius_mag)
     screen.blit(angle_text, (width_column1 +60, 2/3*length_display - 35))
     ###Predictions
     prediction_text = small_font.render('Pos Prediction', True, green)
@@ -467,14 +515,20 @@ def active_mode_render():
     #Z Accelerometer Line Visual
     ztop_point = (middle_column3 + 100, y_obj_dis)
     zbottom_point=(middle_column3 + 100, y_obj_dis+ 150)
+    zmiddle_point = (ztop_point[0], y_obj_dis + 75)
     z_text = small_font.render("+Z", True, white)
     screen.blit(z_text, (middle_column3 + 90, y_obj_dis-30))
     pygame.draw.line(screen, white, ztop_point, zbottom_point, 1)
     y_obj_dis += 180
     accel_text = smallest_font.render(f"Ax: {A[0]},  Ay: {A[1]}, Az: {A[2]}", True, green)
     screen.blit(accel_text, (column3_xcord + 70, y_obj_dis))
+    y_obj_dis += 20
+    accelT_text = smallest_font.render(f"AxT: {A_T[0]},  AyT: {A_T[1]}, AzT: {A_T[2]}", True, green)
+    screen.blit(accelT_text, (column3_xcord + 70, y_obj_dis))
+    draw_accel_data(middle_point, zmiddle_point)
     y_obj_dis += 40
     pygame.draw.line(screen, white, (column3_xcord, y_obj_dis), (width_display, y_obj_dis), 1)
+    
     ####Device Control
     device_text = small_font.render(f"Device: {predicted_device}", True, green)
     screen.blit(device_text, (middle_column3 -150,  y_obj_dis + space))
@@ -522,9 +576,9 @@ connect_serial()
 anchor_dis_calc()
 
 while running: 
-    if (using_serial):
-        read_serial()
-        tag_pos_calc()
+    
+    read_serial()
+    tag_pos_calc()
         
     if (need_render):
         screen.fill(black)  
@@ -561,17 +615,15 @@ while running:
             elif event.key == pygame.K_7:
                 calibrate_pos(7)
             elif event.key == pygame.K_m:
-                print("Calibrated Magnetometer")
-                north_angle = orientation[0]
+                print("Calibrating Magnetometer")
+                
             elif event.key == pygame.K_s:
                 print("Showing Anchor Dis")
                 if (show_anchor_pos == False):
                     show_anchor_pos = True
                 else:
                     show_anchor_pos = False
-            elif event.key == pygame.K_m:
-                print("Calibrated Magnetometer")
-                north_angle = orientation[0]
+    
             elif event.key == pygame.K_t:
                 if (tracking == False):
                     print("Tracking")

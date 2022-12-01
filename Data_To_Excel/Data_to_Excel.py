@@ -47,11 +47,9 @@ def ReadSerial():
             excel_data[NUM_DATA_POINTS + 0].append(serial_data_input[0])
             excel_data[NUM_DATA_POINTS + 1].append(serial_data_input[1])
             excel_data[NUM_DATA_POINTS + 2].append(serial_data_input[2])
-
         if (float(serial_data_input[0]) > STOP_TIMER):
             print("Timeout")
-            running = False
-               
+            running = False      
     except:
         print("Not Saving Serial Line:")  
 
