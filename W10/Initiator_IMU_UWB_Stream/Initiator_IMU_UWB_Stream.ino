@@ -5,10 +5,13 @@
 #include "dw3000.h"
 #define APP_NAME "SS TWR INIT v1.0"
 
-///////////////DW3000: IO 18 not avaiable on DW3000, potential IO = 5, 35, 26
-//BUTTON 1
-#define BUTTON 35
-int but_val = 0;
+///////////////DW3000: IO 18 not avaiable on DW3000, potential IO = 5 = LED, 35 = BUTTON CALIB, 26
+///GPIO for flash 6,7,8,9,10,11/16,17 GPIO UWB = 4, 34, 27, other used  0, 2, 4, 12-15, 18, 19, 23, 27, 32, 33, 34,
+//not working 26,5  being used (36, 39 not avaialble)
+//BUTTON_CALIB 1
+#define BUTTON_CALIB 35
+int calib_but_val = 0;
+
 //LED
 #define LED 5
 //IMU Sensor
@@ -163,7 +166,7 @@ void setup(void) {
   dwt_setlnapamode(DWT_LNA_ENABLE | DWT_PA_ENABLE);
   
   //Declare Pins, Caution these initializations need to be after UWB initializations or the UWB will fail
-  pinMode(BUTTON, INPUT);
+  pinMode(BUTTON_CALIB, INPUT);
   pinMode(LED, OUTPUT);
   
   //Initialize IMU, Caution these initializations need to be after UWB initializations or the UWB will fail
@@ -239,7 +242,7 @@ void Sample_IMU(){
     pos_z += vel_z * dt;
     
     //Print/send updates over com Every Quarter Second
-    if (t2 - last_print_time > 200){
+    if (t2 - last_print_time > .250){
       Serial.print((t2-t1)/1000.0); Serial.print(", ");
     
       Serial.print(alpha, 3); Serial.print(", ");
@@ -262,9 +265,9 @@ void Sample_IMU(){
       // Serial.print(pos_y, 3); Serial.print(", ");
       // Serial.print(pos_z, 3); Serial.print(", ");
 
-      Serial.print(pos_dx, 3); Serial.print(", ");
-      Serial.print(pos_dy, 3); Serial.print(", ");
-      Serial.print(pos_dz, 3); Serial.print(", ");
+      // Serial.print(pos_dx, 3); Serial.print(", ");
+      // Serial.print(pos_dy, 3); Serial.print(", ");
+      // Serial.print(pos_dz, 3); Serial.print(", ");
 
       last_print_time = t2;
       //Changes after every print accumulated
@@ -275,9 +278,9 @@ void Sample_IMU(){
 }
 
 void loop(){
-  but_val = digitalRead(BUTTON);
+  calib_but_val = digitalRead(BUTTON_CALIB);
   //Calibrate IMU
-  if (but_val == 1){
+  if (calib_but_val == 1){
     digitalWrite(LED, HIGH);
     Serial.println("Calibrating");
     calib = true;
@@ -304,7 +307,7 @@ void loop(){
     Sample_IMU();
   }
   else{
-    Serial.println("Press Button to Calibrate...");
+    Serial.println("Press BUTTON_CALIB to Calibrate...");
   }
 
   //////////Transmit UWB Data///////////////

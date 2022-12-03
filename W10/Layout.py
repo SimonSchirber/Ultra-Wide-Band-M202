@@ -25,7 +25,7 @@ obj_pos_list = [object1, object2]
 obj_name_list = ["Smart Light", "Smart TV"]
 comb_pos_list = [Anchor1, Anchor2, object1, object2]
 comb_name_list = ["Anchor1", "Anchor2", "Smart Light", "Smart TV"]
-#Magnetometer calibration to which was is north facing in the room
+#Magnetometer calibration facing 0 degrees
 alpha_offset = 0
 ###Accelerometer offsets
 ax_offset, ay_offset, az_offset = 0, 0, 0
@@ -146,23 +146,27 @@ def read_serial():
             #Translated Accel
             A_T[0] = serial_data_input[7] 
             A_T[1] = serial_data_input[8] 
-            A_T[1] = serial_data_input[9] 
+            A_T[2] = serial_data_input[9] 
             #Moving average dx, dy, dz
             pos_dx.pop(0)
-            pos_dx = pos_dx.append(serial_data_input[10])
+            pos_dx.append(serial_data_input[10])
             pos_dy.pop(0)
-            pos_dy = pos_dy.append(serial_data_input[11])
+            pos_dy.append(serial_data_input[11])
             pos_dz.pop(0)
-            pos_dz = pos_dz.append(serial_data_input[12])
+            pos_dz.append(serial_data_input[12])
             #Anchor Distances
             anchor1_dis = serial_data_input[-2]/39.7
             anchor2_dis = serial_data_input[-1]/39.7
             need_render = True
-        elif (serial_data_input == 4):
+        elif (len(serial_data_input) == 4):
             ax_offset = serial_data_input[0]
             ay_offset = serial_data_input[1]
             az_offset = serial_data_input[2]
             alpha_offset = serial_data_input[3]
+            print(f"Alpha offest = {alpha_offset} ")
+        elif (len(serial_data_input) == 2):
+            anchor1_dis = serial_data_input[0]/39.7
+            anchor2_dis = serial_data_input[1]/39.7
         else:
             print("Faulty input. Check if UWB out of Range?")
     except:
@@ -172,8 +176,8 @@ def draw_mag_line(line_angle, color, radius):
     """Draw the lines that move the magnetometer/compass"""
     xcenter_mag = (width_column1 + column3_xcord)/2
     ycenter_mag =  length_display*.5
-    xouter_mag = xcenter_mag + radius * math.sin(line_angle * np.pi/180)
-    youter_mag = ycenter_mag - radius * math.cos(line_angle * np.pi/180)
+    xouter_mag = xcenter_mag + radius * math.sin(math.radians(line_angle))
+    youter_mag = ycenter_mag - radius * math.cos(math.radians(line_angle))
     pygame.draw.line(screen, color, (xcenter_mag, ycenter_mag), (xouter_mag, youter_mag), 2)
     pygame.draw.circle(screen, black, (xcenter_mag, ycenter_mag), 5, 0)
     pygame.draw.circle(screen, color, (xouter_mag, youter_mag), 5, 0)
@@ -189,13 +193,16 @@ def draw_gyro_line(middle_cord):
 
 def draw_accel_data(centerxy, centerz):
     ###Assuming full = 75 pixels
-    mag_x = average(pos_dx) * 10
-    mag_y = average(pos_dy) * 10
-    mag_z = average(pos_dz) * 10
+    mag_x = average(pos_dx) * 40
+    mag_y = average(pos_dy) * 40
+    mag_z = average(pos_dz) * 40
     pygame.draw.line(screen, blue, (centerxy[0], centerxy[1]), (centerxy[0] + mag_x, centerxy[1] + mag_y), 2)
     pygame.draw.line(screen, blue,(centerz[0], centerxy[1]), (centerz[0], centerxy[1] - mag_z), 2)
-    pygame.draw.circle(screen, black, (centerxy[0], centerxy[1]), 5, 0)
-    pygame.draw.circle(screen, black, (centerz[0], centerxy[1]), 5, 0)
+    pygame.draw.circle(screen, blue, (centerxy[0], centerxy[1]), 5, 0)
+    pygame.draw.circle(screen, blue, (centerxy[0], centerxy[1]), 5, 0)
+    
+    pygame.draw.circle(screen, blue, (centerxy[0] + mag_x, centerxy[1] + mag_y), 3, 0)
+    pygame.draw.circle(screen, blue, (centerz[0], centerxy[1] - mag_z), 3, 0)
 
 def move_object(user_pos = False, Object_num = None):
     global predicted_pos, comb_pos_list
@@ -454,8 +461,8 @@ def active_mode_render():
     radius_mag = length_display*1/9
     pygame.draw.circle(screen, grey, ((width_column1 + column3_xcord)/2, length_display * .5), radius_mag, 0) 
     pygame.draw.circle(screen, white, ((width_column1 + column3_xcord)/2, length_display * .5), radius_mag, 3)
-    draw_mag_line(alpha_offset, red, radius_mag)
-    draw_mag_line(alpha, green, radius_mag)
+    draw_mag_line((360 - alpha_offset), red, radius_mag)
+    draw_mag_line((360 - alpha_offset) + alpha, green, radius_mag)
     screen.blit(angle_text, (width_column1 +60, 2/3*length_display - 35))
     ###Predictions
     prediction_text = small_font.render('Pos Prediction', True, green)
@@ -525,6 +532,8 @@ def active_mode_render():
     y_obj_dis += 20
     accelT_text = smallest_font.render(f"AxT: {A_T[0]},  AyT: {A_T[1]}, AzT: {A_T[2]}", True, green)
     screen.blit(accelT_text, (column3_xcord + 70, y_obj_dis))
+    pos_dt_text = smallest_font.render(f"dx: {pos_dx},  dy: {pos_dy}, dz: {pos_dz}", True, green)
+    screen.blit(pos_dt_text, (column3_xcord + 5, y_obj_dis + 20))
     draw_accel_data(middle_point, zmiddle_point)
     y_obj_dis += 40
     pygame.draw.line(screen, white, (column3_xcord, y_obj_dis), (width_display, y_obj_dis), 1)

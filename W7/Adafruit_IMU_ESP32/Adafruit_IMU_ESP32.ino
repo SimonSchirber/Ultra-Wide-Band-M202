@@ -8,8 +8,7 @@
 TwoWire I2CBNO = TwoWire(0);
 Adafruit_BNO055 bno;
 
-
-
+float EMA_a = .3 //EMA alpha value where low pass = 
 
 void setup(void) 
 {

@@ -160,7 +160,7 @@ void loop(void)
 
       Serial.print(pos_dx, 3); Serial.print(", ");
       Serial.print(pos_dy, 3); Serial.print(", ");
-      Serial.println(pos_dz, 3); 
+      Serial.print(pos_dz, 3); Serial.print(", ");
 
       last_print_time = t2;
       //Changes after every print accumulated

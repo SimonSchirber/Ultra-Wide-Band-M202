@@ -12,10 +12,10 @@ using_BLE = False
 
 ######Calibration/Room Setup########
 #Room wall length dimension (X, Y) in meters
-wall_len = [6, 10]
+wall_len = [4.14 , 5.1]
 #Anchors: Known Cordinates (x,y, z) in room (m) where 0,0,0 is top left corner in diplay
-Anchor1 = [0, 0, 0]
-Anchor2 = [1.5, 0, 1.2]
+Anchor1 = [0, 0, .7366]
+Anchor2 = [3.07, 0, .7366]
 dis_anchors = 0
 anchor1_dis = .5
 anchor2_dis = .5
@@ -31,7 +31,7 @@ comb_name_list = ["Anchor1", "Anchor2", "Smart Light", "Smart TV"]
 #Magnetometer calibration to which was is north facing in the room
 north_angle = 3*math.pi/4
 ###Height which obbjects will be set to unless specificed otherwise
-default_height = 0
+default_height = .7366
 
 ###########Sensor Data Readings#############
 #Magnetometer Angle
@@ -48,7 +48,7 @@ anchor_dist_list = [5.45, 10.3]
 
 #####Predictions#####
 #User Predicted Position (Tag Position, x, y, z)
-predicted_pos = [0, 0, 1]
+predicted_pos = [0, 0, 1.3]
 orientation = [0, 0, 0]
 predicted_device = "Smart Light"
 show_anchor_pos = False
