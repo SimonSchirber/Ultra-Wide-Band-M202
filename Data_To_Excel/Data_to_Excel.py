@@ -3,7 +3,7 @@ import pandas as pd
 import keyboard
 from os.path import exists
 
-DOC_NAME = "Sanity_Test_1q"
+DOC_NAME = "Sanity_Test_2q"
 PATH_SAVE = f"C:/Users/schir/Desktop/Code_Projects/GITHUB/Ultra-Wide-Band-M202/Main/Excel_Data/{DOC_NAME}.xlsx"
 #DATA_POINT_HEADER = ["Time (sec)", "Alpha", "Beta", "Gamma", "Ax", "Ay", "Az", "AxT", "AyT", "AzT", "vel_x", "vel_y", "vel_z", "vel_dx", "vel_dy", "vel_dz", "pos_x,", "pos_y", "pos_z", "pos_dx,", "pos_dy", "pos_dz"]
 DATA_POINT_HEADER = ["Time (sec)", "Alpha", "Beta", "Gamma", "Ax", "Ay", "Az", "AxT", "AyT", "AzT", "Anchor1_dis", "Anchor2_dis"]
@@ -11,7 +11,7 @@ NUM_DATA_POINTS = len(DATA_POINT_HEADER)
 BAUD_RATE = 115200
 OVERWRITE = False
 ##Stop listening after first timer (looking at the time reported in the first column of data points)
-STOP_TIMER = 120
+STOP_TIMER = 1000
 
 if (exists(PATH_SAVE) and (OVERWRITE == False)):
     print("File already exists, Rename file or change overwrite to True ")
@@ -74,4 +74,4 @@ while running:
 
 print(f"Saving to {PATH_SAVE}")
 df = pd.DataFrame(excel_data).T
-df.to_excel(excel_writer = PATH_SAVE)
+df.to_excel(excel_writer = PATH_SAVE, index = False, header= False)
