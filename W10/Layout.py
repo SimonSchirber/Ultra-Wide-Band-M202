@@ -13,27 +13,31 @@ ser = 0
 USE_EXCEL = False
 EXCEL_PATH = r'"C:/Users/schir/Desktop/Code_Projects/GITHUB/Ultra-Wide-Band-M202/Main/Excel_Data/Sanity_Test_2.xlsx"'
 EXCEL_TIME_DIFF = .05
-
+#inch to meter conversion
+IM = 39.37
 ######Calibration/Room Setup########
 #Room wall length dimension (X, Y) in meters
-wall_len = [6, 10]
+wall_len = [334/IM, 339/IM]
 #Anchors: Known Cordinates (x,y, z) in room (m) where 0,0,0 is top left corner in diplay
-Anchor1 = [0, 0, 1]
-Anchor2 = [0, 1, 1]
+Anchor1 = [0, 0, 37.5/IM]
+Anchor2 = [0, 257/IM, 137.5/IM]
 dis_anchors = 0
 anchor1_dis = .5
 anchor2_dis = .5
 anchor_pos_list = [Anchor1, Anchor2]
 anchor_name_list = ["Anchor1", "Anchor2"]
 #Smart Device objects
-object1 = [4.51, 8.5, 1.00]
-object2 = [1.3, 8.7, 1.00]
-object3 = [3, .1, 1.00]
-object4 = [.2, 4.5, 1.00]
-object5 = [5, 4, 1.00]
-obj_pos_list = [object1, object2, object3, object4, object5]
-obj_name_list = ["Smart Light Zero", "Smart Light One", "Smart TV", "Bluetooth Speaker 0", "Bluetooth Speaker 1"]
-OBJECT_RADIUS = 1.5
+#No tape Light
+object1 = [83/IM, 111/IM, 52/IM]
+#Tape light 
+object2 = [313/IM, 210/IM, 49/IM]
+#BLuetooth speaker
+object3 = [313/IM, 280/IM, 34/IM]
+object4 = [270/IM, .3, 1.00]
+object5 = [ 50/IM, 280/IM, 1.00]
+obj_pos_list = [object1, object2]#, object3, object4, object5
+obj_name_list = ["Smart Light Zero", "Smart Light One" ]# "Bluetooth Speaker 0", "Smart TV", "Bluetooth Speaker 1"
+OBJECT_RADIUS = 1.5 
 comb_pos_list = [Anchor1, Anchor2]
 comb_name_list = ["Anchor1", "Anchor2"]
 for obj in range(len(obj_pos_list)):
@@ -79,7 +83,7 @@ X2, Y2, Z2 = 0, 0 , 0
 
 #####Predictions#####
 #User Predicted Position (Tag Position, x, y, z)
-predicted_pos = [0, 0, 1]
+predicted_pos = [0, 0, 50/IM]
 hit_index = -1
 show_anchor_pos = False
 tracking = True
@@ -138,6 +142,8 @@ tv_full_img = pygame.image.load(images_dir + "\\tv_full.png").convert_alpha()
 tv_full_img = pygame.transform.rotozoom(tv_full_img, 0, .5)
 bulb_on_full_img = pygame.image.load(images_dir + "\\bulb_on.png").convert_alpha()
 bulb_on_full_img = pygame.transform.rotozoom(bulb_on_full_img, 0, .40)
+bulb_off_full_img = pygame.image.load(images_dir + "\\bulb_off.png").convert_alpha()
+bulb_off_full_img = pygame.transform.rotozoom(bulb_off_full_img, 0, .11)
 speaker_full_img = pygame.image.load(images_dir + "\\speaker.png").convert_alpha()
 speaker_full_img = pygame.transform.rotozoom(speaker_full_img, 0., .4)
 def connect_serial():
@@ -269,8 +275,8 @@ def render_room():
     #Draw Walls: rect(TLcorner x, y, xlen, ylen)
     pygame.draw.rect(screen, red, pygame.Rect(rectx, recty, x_wall_dis, y_wall_dis), width = 3)
     #Add dimensions to walls
-    xwall_text = small_font.render(f"{wall_len[0]}m", True, red)
-    ywall_text = small_font.render(f"{wall_len[1]}m", True, red)
+    xwall_text = small_font.render(f"{round(wall_len[0], 2)}m", True, red)
+    ywall_text = small_font.render(f"{round(wall_len[1], 2)}m", True, red)
     ywall_text = pygame.transform.rotate(ywall_text, 90)
     screen.blit(xwall_text, (rectx + x_wall_dis/2 - 30, recty - 35))
     screen.blit(ywall_text, (rectx - 35, recty + (y_wall_dis/2) - 30))
@@ -463,6 +469,7 @@ def calibration_mode_render():
     pygame.draw.line(screen, white, (zobj_text_dis- space, 0), (zobj_text_dis-space, y_obj_dis), 1)
 
 def active_mode_render():
+    global light_1_on, light_0_on
     """Draw Display for active mode"""
     #Vertical Column Lines
     pygame.draw.line(screen, white, (width_column1, 0), (width_column1, length_display), 1)
@@ -586,7 +593,17 @@ def active_mode_render():
         device_xpos = middle_column3 - 70
         device_ypos =  y_obj_dis + 40
         if ("light" in device_name):
-            screen.blit(bulb_on_full_img, (device_xpos,device_ypos))
+            if ("Zero" in device_name):
+                if (light_0_on):
+                    screen.blit(bulb_on_full_img, (device_xpos,device_ypos))
+                else:
+                    screen.blit(bulb_off_full_img, (device_xpos,device_ypos))
+            else:
+                if (light_1_on):
+                    screen.blit(bulb_on_full_img, (device_xpos,device_ypos))
+                else:
+                    screen.blit(bulb_off_full_img, (device_xpos,device_ypos))
+            
         elif ('tv' in device_name):
             screen.blit(tv_full_img, (device_xpos,device_ypos))
         elif('speaker' in device_name):
@@ -675,7 +692,7 @@ def read_serial():
 
 def check_line_of_sight(clicked):
     """Check if line intersects sphere of objects in the room"""
-    global X2, Y2, Z2, hit_index
+    global X2, Y2, Z2, hit_index, light_1_on, light_0_on
 
     hit_index = -1
     max_hit = 0 
@@ -698,7 +715,10 @@ def check_line_of_sight(clicked):
         c = X3**2 + Y3**2 + Z3**2 + X1**2 + Y1**2 + Z1**2 - 2*(X3*X1 + Y3*Y1 + Z3*Z1) - OBJECT_RADIUS**2
         sol = b**2 - 4*a*c
         if (sol > max_hit):
-            hit_index = i + 2
+            line_dir = X2-X1
+            obj_dir = X3-X1
+            if ((line_dir < 0 and obj_dir < 0) or (line_dir > 0 and obj_dir > 0)):
+                hit_index = i + 2
 
     
     screen.fill(black)

@@ -290,11 +290,16 @@ void loop(){
   }
   //Button presss to control device
   else if ((calib) && calib_but_val == 1){
-    Serial.print(ax_offset); Serial.print(", "); Serial.print(ay_offset); Serial.print(", "); Serial.print(az_offset ); Serial.print(", ");Serial.println(alpha_offset);
+    //Serial.print(ax_offset); Serial.print(", "); Serial.print(ay_offset); Serial.print(", "); Serial.print(az_offset ); Serial.print(", ");Serial.println(alpha_offset);
     digitalWrite(LED, HIGH);
     Serial.println("Clicked!");
     t1 = millis();
     delay(1000);
+    calib_but_val = digitalRead(BUTTON_CALIB);
+    if (calib_but_val == HIGH){
+      calib = 0;
+    }
+    
   }
   else if (millis() - t1 > 1000){
     digitalWrite(LED, LOW);
