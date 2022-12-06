@@ -83,7 +83,8 @@ void loop(void)
   ///Euler Accelerometer
   imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_ACCELEROMETER);
   bandpassfilter(euler.y(), ay_EMA_low, ay_EMA_high, &ay_EMA_low, &ay_EMA_high, &ay_bandpass, &ay_highpass);
-  y_vel +=  dt*ay_highpass;
+  y_vel +=  dt*euler.y();
+  y_pos += dt*y_vel;
 
   bandpassfilter(y_vel, vely_EMA_low, vely_EMA_high, &vely_EMA_low, &vely_EMA_high, &vely_bandpass, &vely_highpass);
   y_pos += 100* vely_highpass*dt;
@@ -96,11 +97,11 @@ void loop(void)
   // Serial.print("lowerthresh:");Serial.println(-.3);
 
   // Serial.print("Ayhighpass:");Serial.print(ay_EMA_high); Serial.print(", ");
-  // Serial.print("Ay:");Serial.print(euler.y()); Serial.print(", ");
+  Serial.print("Ay:");Serial.print(euler.y()); Serial.print(", ");
   // Serial.print("BandpassAy:");Serial.print(ay_bandpass); Serial.print(", ");
-  // Serial.print("Vely:");Serial.print(y_vel); Serial.print(", ");
+  Serial.print("Vely:");Serial.print(y_vel); Serial.print(", ");
   // Serial.print("BandpassVely:");Serial.print(vely_bandpass, 3); Serial.print(", ");
-  // Serial.print("Ypos:"); Serial.println(y_pos, 5); 
+  Serial.print("Ypos:"); Serial.println(y_pos, 5); 
 
   //Moving Average Offstt
   total1 = total1 - readings1[readIndex1];
@@ -120,5 +121,5 @@ void loop(void)
 
 
 
-  delay(5);
+  delay(50);
 }

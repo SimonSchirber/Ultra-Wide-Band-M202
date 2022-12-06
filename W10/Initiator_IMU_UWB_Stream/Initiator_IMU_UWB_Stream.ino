@@ -32,7 +32,7 @@ const float gravity = 9.81;
 long int t1 = 0, last_print = 0, last_print_time = 0, prev_time = 0;
 
 //Sensor Reading: Euler Angles
-float alpha = 0, alphaT, alpha_offset = 0, beta = 0, Gamma = 0;
+float alpha = 0, alpha_offset = 0, beta = 0, Gamma = 0;
 //Sensor Reading: Accelerations
 float ax = 0, ay = 0, az = 0;
 //Acceleration Drift Offsets
@@ -211,10 +211,6 @@ void Sample_IMU(){
     //Euler Oreintation
     imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
     alpha = euler.x();
-    alphaT = euler.x() - alpha_offset;
-    if (alpha_offset < 0){
-      alpha_offset += 360;}
-    //alpha = alpha_offset;
     beta = euler.y();
     Gamma = euler.z();
     ///Euler Accelerometer
@@ -256,18 +252,6 @@ void Sample_IMU(){
       Serial.print(axT, 3); Serial.print(", ");   
       Serial.print(ayT, 3); Serial.print(", ");
       Serial.print(azT, 3); Serial.print(", ");
-      
-      // Serial.print(vel_x, 3); Serial.print(", ");
-      // Serial.print(vel_y, 3); Serial.print(", ");
-      // Serial.print(vel_z, 3); Serial.print(", ");
-
-      // Serial.print(pos_x, 3); Serial.print(", ");
-      // Serial.print(pos_y, 3); Serial.print(", ");
-      // Serial.print(pos_z, 3); Serial.print(", ");
-
-      // Serial.print(pos_dx, 3); Serial.print(", ");
-      // Serial.print(pos_dy, 3); Serial.print(", ");
-      // Serial.print(pos_dz, 3); Serial.print(", ");
 
       last_print_time = t2;
       //Changes after every print accumulated
@@ -280,25 +264,39 @@ void Sample_IMU(){
 void loop(){
   calib_but_val = digitalRead(BUTTON_CALIB);
   //Calibrate IMU
-  if (calib_but_val == 1){
+  if ((!calib) && calib_but_val == 1){
     digitalWrite(LED, HIGH);
     Serial.println("Calibrating");
     calib = true;
     delay(500);
     imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_ACCELEROMETER);
-    ax_offset = euler.x();
-    ay_offset = euler.y();
-    az_offset = euler.z() - gravity;
-    Serial.println("Offsets (ax ay az): ");
-    Serial.print(ax_offset); Serial.print(", "); Serial.print(ay_offset); Serial.print(", "); Serial.print(az_offset ); Serial.print(", ");
-    euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
-    alpha_offset = euler.x(); 
-    Serial.println(alpha_offset);
+    for (int i=0; i<30; i++) {
+      imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_ACCELEROMETER);
+      ax_offset += euler.x();
+      ay_offset += euler.y();
+      az_offset += euler.z() - gravity;
+      euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+      alpha_offset += euler.x();
+    } 
+    ax_offset /= 30.0;
+    ay_offset /= 30.0;
+    az_offset /= 10.0;
+    alpha_offset /= 30.0;
+    
+    Serial.print(ax_offset); Serial.print(", "); Serial.print(ay_offset); Serial.print(", "); Serial.print(az_offset ); Serial.print(", ");Serial.println(alpha_offset);
     vel_x = 0; vel_y = 0; vel_z = 0;
     pos_x = 0; pos_y = 0; pos_z = 0;
     t1 = millis();
   }
-  else{
+  //Button presss to control device
+  else if ((calib) && calib_but_val == 1){
+    Serial.print(ax_offset); Serial.print(", "); Serial.print(ay_offset); Serial.print(", "); Serial.print(az_offset ); Serial.print(", ");Serial.println(alpha_offset);
+    digitalWrite(LED, HIGH);
+    Serial.println("Clicked!");
+    t1 = millis();
+    delay(1000);
+  }
+  else if (millis() - t1 > 1000){
     digitalWrite(LED, LOW);
   }
 

@@ -8,7 +8,6 @@ import time
 load_dotenv()
 username = os.getenv("kasausername")
 password = os.getenv("password")
-
 device_manager = TPLinkDeviceManager(username, password)
 
 ##########Toglle Tape Plug#######
