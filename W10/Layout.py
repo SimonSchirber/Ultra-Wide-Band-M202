@@ -33,10 +33,10 @@ object1 = [83/IM, 111/IM, 52/IM]
 object2 = [313/IM, 210/IM, 49/IM]
 #BLuetooth speaker
 object3 = [313/IM, 280/IM, 34/IM]
-object4 = [270/IM, .3, 1.00]
-object5 = [ 50/IM, 280/IM, 1.00]
-obj_pos_list = [object1, object2]#, object3, object4, object5
-obj_name_list = ["Smart Light Zero", "Smart Light One" ]# "Bluetooth Speaker 0", "Smart TV", "Bluetooth Speaker 1"
+object4 = [120/IM, .3, 1.00]
+object5 = [ 50/IM, 300/IM, 1.00]
+obj_pos_list = [object1, object2, object3, object4, object5]
+obj_name_list = ["Smart Light Zero", "Smart Light One", "Bluetooth Speaker 0", "Smart TV", "Bluetooth Speaker 1"]
 OBJECT_RADIUS = 1.5 
 comb_pos_list = [Anchor1, Anchor2]
 comb_name_list = ["Anchor1", "Anchor2"]
@@ -778,8 +778,8 @@ if (USE_EXCEL):
     data = pd.DataFrame(excel_data, columns=DATA_POINT_HEADER)
     d_index = 1
 #Serial Data 
-else:
-    connect_serial()
+#else:
+    #sconnect_serial()
 #Calculate the distance of the anchors to find intersect later  
 anchor_dis_calc()
 
@@ -789,8 +789,8 @@ while running:
         if d_index < len(data) - 1:
             read_excel()
         d_index += 1
-    else:
-        read_serial()
+    # else:
+    #     read_serial()
     tag_pos_calc()
     
     if (need_render):
