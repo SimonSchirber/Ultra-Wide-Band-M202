@@ -20,7 +20,7 @@ IM = 39.37
 wall_len = [334/IM, 339/IM]
 #Anchors: Known Cordinates (x,y, z) in room (m) where 0,0,0 is top left corner in diplay
 Anchor1 = [0, 0, 37.5/IM]
-Anchor2 = [0, 257/IM, 137.5/IM]
+Anchor2 = [0, 67.5/IM, 137.5/IM]
 dis_anchors = 0
 anchor1_dis = .5
 anchor2_dis = .5
@@ -778,8 +778,8 @@ if (USE_EXCEL):
     data = pd.DataFrame(excel_data, columns=DATA_POINT_HEADER)
     d_index = 1
 #Serial Data 
-#else:
-    #sconnect_serial()
+else:
+    connect_serial()
 #Calculate the distance of the anchors to find intersect later  
 anchor_dis_calc()
 
@@ -789,8 +789,8 @@ while running:
         if d_index < len(data) - 1:
             read_excel()
         d_index += 1
-    # else:
-    #     read_serial()
+    else:
+        read_serial()
     tag_pos_calc()
     
     if (need_render):
